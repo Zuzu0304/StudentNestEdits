@@ -1,0 +1,13 @@
+import { useEffect, useState } from 'react'
+import { apiFetch, mediaUrl } from '../lib_api.js'
+import { getStoredUser } from '../lib_auth.js'
+import './InspectorDraftProperty.css'
+
+export default function InspectorDraftProperty({id}){
+ const [property,setProperty]=useState(null),[error,setError]=useState(''),[loading,setLoading]=useState(true)
+ useEffect(()=>{apiFetch(`/properties/inspection/${id}`).then(d=>setProperty(d.property)).catch(e=>setError(e.message||'Unable to load property')).finally(()=>setLoading(false))},[id])
+ if(loading)return <main className="inspector-property-page"><div className="inspector-property-card">Loading property details…</div></main>
+ if(error||!property)return <main className="inspector-property-page"><div className="inspector-property-card"><h1>Property unavailable</h1><p>{error||'This property could not be found.'}</p></div></main>
+ const imgs=(property.images||[]).filter(x=>(x.type||'image')!=='video')
+ return <main className="inspector-property-page"><div className="inspector-property-shell"><header><div><p className="eyebrow">StudentNest · Inspector view</p><span className="draft-badge">Private draft · not published</span><h1>{property.title}</h1><p>{property.address} · {property.area}, {property.city}</p></div><a className="btn btn-outline-ink" href={`tel:${property.provider_phone}`}>Call provider</a></header><div className="inspector-property-grid"><section className="inspector-property-card"><div className="inspector-gallery">{imgs.length?imgs.map((m,i)=><img key={i} src={mediaUrl(m.url)} alt={`${property.title} ${i+1}`}/>):<div className="gallery-empty">No photos uploaded.</div>}</div><h2>Property details</h2><div className="detail-grid"><div><span>Rent</span><strong>₦{Number(property.rent||0).toLocaleString()} / year</strong></div><div><span>Type</span><strong>{String(property.property_type||'').replace(/-/g,' ')}</strong></div><div><span>Bedrooms</span><strong>{property.bedrooms||0}</strong></div><div><span>Bathrooms</span><strong>{property.bathrooms||0}</strong></div></div><p className="property-description">{property.description}</p><div className="amenities">{(property.amenities||[]).map(a=><span key={a}>{a}</span>)}</div></section><aside className="inspector-property-card provider-card"><p className="eyebrow">Provider</p><h2>{property.provider_name}</h2><p>{property.provider_phone}</p><p>{property.provider_email}</p><a className="btn btn-primary full-width" href={`tel:${property.provider_phone}`}>Call provider</a><p className="private-note">This listing is still a draft. Only StudentNest inspectors and authorised staff can view it before approval.</p></aside></div></div></main>
+}

@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: studentnest
+    runtime: node
+    buildCommand: npm install && npm run build && npm install --prefix backend
+    startCommand: npm start --prefix backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: VITE_API_URL
+        value: /api
+      - key: CLIENT_ORIGIN
+        value: "*"
+      - key: PAYMENT_MODE
+        value: mock
+      - key: JWT_SECRET
+        generateValue: true
+      - key: DB_HOST
+        sync: false
+      - key: DB_PORT
+        value: "3306"
+      - key: DB_USER
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_NAME
+        value: studentnest
