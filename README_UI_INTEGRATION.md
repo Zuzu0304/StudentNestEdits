@@ -1,24 +1,30 @@
 # StudentNest frontend and backend integration
 
 The React app uses the shared API helper in `src/lib_api.js`. It reads
-`VITE_API_URL` when configured and otherwise calls the same-origin `/api`
-routes, which allows the frontend and backend to share a deployment origin.
+`VITE_API_URL` when configured and otherwise calls the StudentNest Render API
+at `https://studentnesteditsbackend.onrender.com/api`.
 
 ## Local development
 
-- Run the Express backend on port `5000` from `backend`.
-- Run the Vite frontend as usual. Vite proxies `/api` and `/uploads` requests to
-  the backend on port `5000`.
+- The frontend calls the deployed Render API by default.
+- To use a local backend instead, set `VITE_API_URL=http://localhost:5000/api`
+  before starting Vite. The Vite proxy is also available when `VITE_API_URL=/api`.
+- Run the Express backend on port `5000` from `backend` when using local mode.
 - Configure the backend database and authentication environment variables
   before using endpoints that require them.
 
 ## Deployment
 
-- For a same-origin deployment, leave `VITE_API_URL` unset or set it to `/api`.
-- Vercel routes `/api/*` and `/uploads/*` to the `backend` service; all other
-  paths go to the Vite frontend service.
-- For a separately hosted backend, set `VITE_API_URL` to its API base URL and
-  configure its CORS `CLIENT_ORIGIN` to allow the frontend origin.
+- For the separate Render backend, leave `VITE_API_URL` unset to use the
+  Render API default, or set it to
+  `https://studentnesteditsbackend.onrender.com/api`.
+- Set the Render backend's `CLIENT_ORIGIN` to the deployed frontend origin so
+  the browser is allowed to make cross-origin API requests.
+- To deploy frontend and backend on the same origin instead, set
+  `VITE_API_URL=/api`.
+- If deploying the frontend separately (for example, on Vercel), configure
+  `VITE_API_URL=https://studentnesteditsbackend.onrender.com/api` in its build
+  environment and redeploy so the frontend bundle uses the Render API.
 - The backend requires its production database and auth environment variables
   to be configured in the hosting provider.
 

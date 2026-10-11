@@ -4,6 +4,10 @@ Student accommodation platform prototype.
 
 The backend is currently at Stage 4: Property Verification & Inspection.
 
+## API documentation
+
+See [API_FRONTEND_INTEGRATION.md](API_FRONTEND_INTEGRATION.md) for the mounted API routes, frontend request setup, access requirements, and backend integration details.
+
 ## Stage 14 workflow update
 Run `backend/database/stage14_studentnest_workflow_migration.sql` after Stage 13. It adds media for student roommate/takeover posts, takeover remaining-rent details, provider-proposed viewing appointments and student confirmation, booking appointment fields, and agent-assigned payment dispute investigations.
 

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { apiFetch } from "../lib_api.js";
-import { storeAuth } from "../lib_auth.js";
+import { clearAuth, getCurrentUser, storeAuth } from "../lib_auth.js";
 import "./AuthPage.css";
 
 const preview = (file) => URL.createObjectURL(file);
@@ -126,6 +126,14 @@ function AuthPage({ initialMode = "login" }) {
         },
       );
       storeAuth(data);
+      let currentUser;
+      try {
+        currentUser = await getCurrentUser();
+      } catch (err) {
+        clearAuth();
+        window.dispatchEvent(new Event("studentnest-auth"));
+        throw err;
+      }
       window.dispatchEvent(new Event("studentnest-auth"));
       if (mode === "signup" && role === "provider") {
         const fd = new FormData();
@@ -144,11 +152,11 @@ function AuthPage({ initialMode = "login" }) {
         }
       }
       const destination =
-        data.user.role === "provider"
+        currentUser.role === "provider"
           ? "provider-dashboard"
-          : data.user.role === "inspector"
+          : currentUser.role === "inspector"
             ? "inspection-dashboard"
-            : data.user.role === "admin"
+            : currentUser.role === "admin"
               ? "admin-dashboard"
               : "student-dashboard";
       window.location.hash = destination;
@@ -376,7 +384,9 @@ function AuthPage({ initialMode = "login" }) {
               className='btn btn-primary auth-submit'
               disabled={submitting}>
               {submitting
-                ? "Creating…"
+                ? mode === "login"
+                  ? "Signing in…"
+                  : "Creating…"
                 : mode === "login"
                   ? "Log in"
                   : "Create account"}

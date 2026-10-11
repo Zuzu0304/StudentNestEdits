@@ -1,5 +1,6 @@
 const API_URL = (
-  import.meta.env.VITE_API_URL || '/api'
+  import.meta.env.VITE_API_URL ||
+  'https://studentnesteditsbackend.onrender.com/api'
 ).replace(/\/+$/, '')
 
 const API_ORIGIN = /^https?:\/\//i.test(API_URL)
