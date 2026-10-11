@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import AccommodationCard from './AccommodationCard.jsx'
 import mockAccommodations from '../data/mockAccommodations.js'
-import { apiFetch, mediaUrl } from '../lib_api.js'
+import { apiFetch } from '../lib_api.js'
+import { normaliseApiProperty } from '../lib_properties.js'
 import './Accommodation.css'
 
 const INITIAL_FILTERS = {
@@ -184,17 +185,3 @@ function Accommodation() {
 }
 
 export default Accommodation
-
-function normaliseApiProperty(item) {
-  const images = Array.isArray(item.images) ? item.images.map(m=>typeof m==='string'?({url:m,type:'image'}):m).filter(m=>m?.url) : []
-  const firstImage=images.find(m=>m.type!=='video')?.url
-  const amenities = Array.isArray(item.amenities) ? item.amenities : []
-  const numericPrice = Number(item.rent || 0)
-  return {
-    id: item.id, name: item.title, location: [item.area, item.city].filter(Boolean).join(', '), area: item.area || '',
-    price: `₦${numericPrice.toLocaleString()} / year`, numericPrice, type: String(item.property_type || '').replace(/-/g, ' '),
-    rooms: Number(item.bedrooms || 1), availability: ({available:'Available now',reserved:'Reserved',occupied:'Occupied',unavailable:'Unavailable'})[item.availability_status] || 'Unavailable',
-    facilities: amenities, verified: Boolean(item.is_verified), rating: Number(item.rating || 0), reviews: Number(item.review_count || 0),
-    image: mediaUrl(firstImage || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=800&q=80')
-  }
-}
