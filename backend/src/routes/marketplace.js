@@ -1,23 +1,15 @@
 import { Router } from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
 import crypto from 'crypto';
 import { pool } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
 import { createNotification } from './notifications.js';
+import { uploadBufferToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const router = Router();
 const COMMISSION_RATE = Number(process.env.PLATFORM_COMMISSION_RATE || 5);
 const PAYMENT_MODE = String(process.env.PAYMENT_MODE || 'mock').toLowerCase();
-const uploadRoot = path.resolve(process.env.UPLOAD_DIR || './uploads');
-const marketRoot = path.join(uploadRoot, 'marketplace');
-fs.mkdirSync(marketRoot, { recursive: true });
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, marketRoot),
-  filename: (_req, file, cb) => cb(null, `${Date.now()}-${crypto.randomBytes(5).toString('hex')}${path.extname(file.originalname).toLowerCase()}`)
-});
+const storage = multer.memoryStorage();
 const imageOnly = (_req, file, cb) => {
   const ok = /^image\/(jpeg|png|webp|gif)$/i.test(file.mimetype);
   cb(ok ? null : new Error('Marketplace uploads must be JPG, PNG, WEBP or GIF images.'), ok);
@@ -73,7 +65,13 @@ router.post('/items', requireAuth, requireRole('student'), itemUpload.array('ima
     if(!title||!category||!Number.isFinite(price)||price<=0)return res.status(400).json({success:false,message:'Title, category and a valid price are required.'});
     if(!['new','used'].includes(condition))return res.status(400).json({success:false,message:'Condition must be new or used.'});
     if(!req.files?.length)return res.status(400).json({success:false,message:'Upload at least one clear item picture.'});
-    const images=req.files.map(f=>({url:`/uploads/marketplace/${f.filename}`,type:'image',name:f.originalname,size:f.size}));
+    const images=await Promise.all(req.files.map(async (file)=>{
+      const result=await uploadBufferToCloudinary(file.buffer,{
+        folder:'studentnest/shop',
+        resourceType:'image',
+      });
+      return {url:result.secure_url,type:'image',name:file.originalname,size:file.size,public_id:result.public_id};
+    }));
     const [r]=await pool.execute(`INSERT INTO marketplace_items (seller_id,title,description,category,item_condition,price,images,status) VALUES (?,?,?,?,?,?,?,'available')`,[req.user.id,title,description||null,category,condition,money(price),JSON.stringify(images)]);
     res.status(201).json({success:true,message:'Your item is now live in the Student Shop.',item:{id:r.insertId,title,description,category,item_condition:condition,price:money(price),images,status:'available'}});
   }catch(e){next(e)}

@@ -4,6 +4,7 @@ import path from 'path';
 import fs from 'fs';
 import { pool } from '../config/db.js';
 import { requireAuth, requireRole } from '../middleware/auth.js';
+import { uploadBufferToCloudinary } from '../utils/uploadToCloudinary.js';
 
 const router = Router();
 const uploadRoot = path.resolve(process.env.UPLOAD_DIR || './uploads');
@@ -20,7 +21,8 @@ const ninOnly = (_req, file, cb) => {
   const allowed = /^image\/(jpeg|png|webp)$/i.test(file.mimetype);
   cb(allowed ? null : new Error('NIN documents must be image files (JPG, PNG or WEBP).'), allowed);
 };
-const mediaUpload = multer({ storage, fileFilter: imageVideoOnly, limits: { files: 12, fileSize: 50 * 1024 * 1024 } });
+const mediaStorage = multer.memoryStorage();
+const mediaUpload = multer({ storage: mediaStorage, fileFilter: imageVideoOnly, limits: { files: 12, fileSize: 50 * 1024 * 1024 } });
 const ninUpload = multer({ storage, fileFilter: ninOnly, limits: { files: 2, fileSize: 10 * 1024 * 1024 } });
 
 function publicUser(u) { return { id:u.id, fullName:u.full_name, email:u.email, phone:u.phone, institution:u.institution, role:u.role, isVerified:Boolean(u.is_verified), isActive:Boolean(u.is_active), ninNumber:u.nin_number || '', ninFrontImage:u.nin_front_image || null, ninBackImage:u.nin_back_image || null }; }
@@ -62,8 +64,23 @@ router.post('/provider-documents', requireAuth, requireRole('provider'), ninUplo
 router.post('/property-media', requireAuth, requireRole('provider'), mediaUpload.array('media',12), async(req,res,next)=>{
   try{
     if(!req.files?.length) return res.status(400).json({success:false,message:'Select at least one image or video.'});
-    const media=req.files.map(f=>({url:`/uploads/${f.filename}`,type:f.mimetype.startsWith('video/')?'video':'image',name:f.originalname,size:f.size}));
-    res.status(201).json({success:true,message:'Media uploaded.',media});
+
+    const uploaded = await Promise.all(req.files.map(async (file) => {
+      const result = await uploadBufferToCloudinary(file.buffer, {
+        folder: 'studentnest/properties',
+        resourceType: 'auto',
+      });
+
+      return {
+        url: result.secure_url,
+        type: file.mimetype.startsWith('video/') ? 'video' : 'image',
+        name: file.originalname,
+        size: file.size,
+        public_id: result.public_id,
+      };
+    }));
+
+    res.status(201).json({success:true,message:'Media uploaded to Cloudinary.',media:uploaded});
   }catch(e){next(e)}
 });
 
