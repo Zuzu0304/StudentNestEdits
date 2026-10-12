@@ -55,6 +55,10 @@ Routes marked **Public** do not require a token. **Authenticated** routes requir
 
 Registration and login return a JWT. The auth middleware verifies the JWT and checks its corresponding row in `auth_sessions` and the active user record on each protected request. Logout revokes that server-side session.
 
+The frontend stores the token and user under `studentnest_token` and `studentnest_user`. After login or registration, it requests `/auth/me` and uses the returned user for the dashboard role. On reload, the app verifies any stored token against `/auth/me` before showing protected dashboards. A `401` clears the local session. Logout calls `/auth/logout` and clears local credentials even if the server cannot be reached; the UI reports when server-side logout could not be confirmed.
+
+The login screen calls `/auth/forgot-password` and includes a reset-token form at `#reset-password` (or `#reset-password?token=...`). The backend currently does not send reset emails: in development it logs the token, while production requires an email-delivery integration. After successful `/auth/reset-password`, the frontend clears local credentials and returns to login.
+
 ## Route index
 
 `{id}`, `{propertyId}`, and similar path segments are route parameters. Unless noted otherwise, request data for `POST`, `PUT`, and `PATCH` routes is JSON.
@@ -78,7 +82,7 @@ Registration and login return a JWT. The auth middleware verifies the JWT and ch
 | `POST https://studentnesteditsbackend.onrender.com/api/auth/register` | Public | Creates a student or provider account; hashes the password; inserts a user and auth session; provider registration also saves its payout account. Body: `fullName`, `email`, `password`, optional `phone`, `role`, and `institution` for students; provider registration also requires `bank_name`, `account_name`, and `account_number`. Returns `user` and `token`. |
 | `POST https://studentnesteditsbackend.onrender.com/api/auth/login` | Public | Checks email/password, rejects inactive users, creates an auth session, and returns `user` and `token`. Body: `email`, `password`. |
 | `GET https://studentnesteditsbackend.onrender.com/api/auth/me` | Authenticated | Returns the current public user from the validated JWT session. |
-| `POST https://studentnesteditsbackend.onrender.com/api/auth/logout` | Authenticated | Revokes the current `auth_sessions` row. Clear the frontend token after success. |
+| `POST https://studentnesteditsbackend.onrender.com/api/auth/logout` | Authenticated | Revokes the current `auth_sessions` row. The frontend clears local credentials after the request, including when the server cannot be reached. |
 | `POST https://studentnesteditsbackend.onrender.com/api/auth/forgot-password` | Public | Starts password recovery and returns a non-enumerating response whether or not the email exists. In development the reset token is logged by the backend; connect an email delivery service before relying on email recovery in production. Body: `email`. |
 | `POST https://studentnesteditsbackend.onrender.com/api/auth/reset-password` | Public, reset token required | Hashes the supplied reset token, changes the password, marks the token used, and revokes that user's active sessions. Body: `token`, `newPassword` (at least 8 characters). |
 

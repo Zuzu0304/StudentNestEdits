@@ -197,23 +197,7 @@ export default function ProviderHub() {
             body: JSON.stringify(body),
           })
 
-      const propertyId =
-        editing || data.property?.id
-
-      if (!propertyId) {
-        throw new Error(
-          'Property was saved but no property ID was returned by the server.',
-        )
-      }
-
-      const submitted = await apiFetch(
-        `/properties/${propertyId}/submit`,
-        {
-          method: 'POST',
-        },
-      )
-
-      flash(submitted.message)
+      flash(data.message || 'Property saved as draft.')
 
       setShowForm(false)
       setEditing(null)
@@ -231,6 +215,11 @@ export default function ProviderHub() {
   }
 
   const edit = (property) => {
+    if (!['draft', 'rejected'].includes(property.listing_status)) {
+      flash('Only draft or rejected listings can be edited.')
+      return
+    }
+
     setEditing(property.id)
 
     setForm({
@@ -748,13 +737,11 @@ function Properties({
           </div>
 
           <div className="provider-actions">
-            <button
-              onClick={() =>
-                onEdit(property)
-              }
-            >
-              Edit
-            </button>
+            {['draft', 'rejected'].includes(property.listing_status) && (
+              <button onClick={() => onEdit(property)}>
+                Edit
+              </button>
+            )}
 
             {[
               'draft',

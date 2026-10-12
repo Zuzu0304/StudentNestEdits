@@ -1,101 +1,96 @@
 const API_URL = (
   import.meta.env.VITE_API_URL ||
-  'https://studentnesteditsbackend.onrender.com/api'
-).replace(/\/+$/, '')
+  (["localhost", "127.0.0.1", "::1"].includes(window.location.hostname)
+    ? "http://localhost:5000/api"
+    : "https://studentnesteditsbackend.onrender.com/api")
+).replace(/\/+$/, "");
 
 const API_ORIGIN = /^https?:\/\//i.test(API_URL)
-  ? API_URL.replace(/\/api\/?$/, '')
-  : window.location.origin
+  ? API_URL.replace(/\/api\/?$/i, "")
+  : window.location.origin;
 
 export function mediaUrl(value) {
-  const raw =
-    typeof value === 'string'
-      ? value
-      : value?.url
+  const raw = typeof value === "string" ? value : value?.url;
 
   if (!raw) {
-    return ''
+    return "";
   }
 
   // Backend returned a complete URL
   // or this is a temporary browser preview.
-  if (
-    /^(https?:|blob:|data:)/i.test(raw)
-  ) {
-    return raw
+  if (/^(https?:|blob:|data:)/i.test(raw)) {
+    return raw;
   }
 
   // Convert Windows paths to web paths.
-  const clean = String(raw)
-    .replace(/\\/g, '/')
-    .replace(/^\/+/, '')
+  const clean = String(raw).replace(/\\/g, "/").replace(/^\/+/, "");
 
-  return `${API_ORIGIN}/${clean}`
+  return `${API_ORIGIN}/${clean}`;
 }
 
 export function getToken() {
-  return (
-    localStorage.getItem(
-      'studentnest_token',
-    ) || ''
-  )
+  return localStorage.getItem("studentnest_token") || "";
 }
 
-export async function apiFetch(
-  path,
-  options = {},
-) {
+export async function apiFetch(path, options = {}) {
   const headers = {
     ...(options.body instanceof FormData
       ? {}
       : {
-          'Content-Type':
-            'application/json',
+          "Content-Type": "application/json",
         }),
 
     ...(options.headers || {}),
-  }
+  };
 
-  const token = getToken()
+  const token = getToken();
 
-  const privatePath = /^\/(messages|notifications)(\/|$)|^\/marketplace\/(items\/mine|transactions|payout-account)(\/|$)|^\/student\/(favourites|inquiries)(\/|$)/.test(path)
+  const privatePath =
+    /^\/(messages|notifications)(\/|$)|^\/marketplace\/(items\/mine|transactions|payout-account)(\/|$)|^\/student\/(favourites|inquiries)(\/|$)/.test(
+      path,
+    );
+
   if (privatePath && !token) {
-    throw new Error('Authentication required.')
+    throw new Error("Authentication required.");
   }
 
   if (token) {
-    headers.Authorization =
-      `Bearer ${token}`
+    headers.Authorization = `Bearer ${token}`;
   }
 
-  const response = await fetch(
-    `${API_URL}${path}`,
-    {
-      ...options,
-      headers,
-    },
-  )
+  const response = await fetch(`${API_URL}${path}`, {
+    ...options,
+    headers,
+  });
 
-  let data = null
+  let data = null;
 
   try {
-    data = await response.json()
+    data = await response.json();
   } catch {
     data = {
       success: false,
-      message:
-        'Invalid server response.',
-    }
+      message: "Invalid server response.",
+    };
   }
 
   if (!response.ok) {
-    throw new Error(
-      data?.message ||
-        `Request failed (${response.status})`,
-    )
+    const error = new Error(
+      data?.message || `Request failed (${response.status})`,
+    );
+
+    error.status = response.status;
+
+    if (response.status === 401 && token) {
+      localStorage.removeItem("studentnest_token");
+      localStorage.removeItem("studentnest_user");
+      window.dispatchEvent(new Event("studentnest-auth"));
+    }
+
+    throw error;
   }
 
-  return data
+  return data;
 }
 
-export { API_URL }
+export { API_URL };

@@ -68,12 +68,17 @@ function Navbar() {
       : [BASE_LINKS[0], STUDENT_LINK, ...(user?.role === 'student' ? [SHOP_LINK] : []), BASE_LINKS[1]];
 
   const signout = async () => {
-    await logout();
-    setUser(null);
-    setProfileOpen(false);
-    setMenuOpen(false);
-    window.dispatchEvent(new Event("studentnest-auth"));
-    window.location.hash = "home";
+    try {
+      await logout();
+    } catch (error) {
+      window.alert(`You are signed out on this device, but the server could not confirm logout: ${error.message}`);
+    } finally {
+      setUser(null);
+      setProfileOpen(false);
+      setMenuOpen(false);
+      window.dispatchEvent(new Event("studentnest-auth"));
+      window.location.hash = "home";
+    }
   };
 
   return (

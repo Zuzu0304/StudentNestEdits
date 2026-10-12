@@ -174,7 +174,7 @@ function AuthPage({ initialMode = "login" }) {
         method: "POST",
         body: JSON.stringify({ email }),
       });
-      alert(d.message);
+      alert(`${d.message}\n\nIf you have a reset token, use the Reset password link below.`);
     } catch (e) {
       alert(e.message);
     }
@@ -395,6 +395,11 @@ function AuthPage({ initialMode = "login" }) {
               <p className='auth-server-message'>{serverMessage}</p>
             )}
           </form>
+          {mode === "login" && (
+            <p className='auth-switch-copy'>
+              Have a reset token? <a href='#reset-password'>Reset password</a>
+            </p>
+          )}
           <p className='auth-switch-copy'>
             {mode === "login"
               ? "Don't have an account?"

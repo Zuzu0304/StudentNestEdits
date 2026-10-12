@@ -1,26 +1,101 @@
 import { useEffect, useState } from 'react'
-import mockAccommodations from '../data/mockAccommodations.js'
 import { apiFetch, getToken, mediaUrl } from '../lib_api.js'
 import { getStoredUser } from '../lib_auth.js'
 import './AccommodationDetails.css'
 
 function AccommodationDetails({ id }) {
-  const [accommodation, setAccommodation] = useState(mockAccommodations.find((item) => String(item.id) === String(id)) || mockAccommodations[0])
+  const [accommodation, setAccommodation] = useState(null)
   const [saved, setSaved] = useState(false)
   const [loading, setLoading] = useState(true)
-  useEffect(() => { let cancelled=false; apiFetch(`/properties/${id}`).then(data=>{if(!cancelled && data.property){ const p=data.property; const imgs=Array.isArray(p.images)?p.images.map(m=>typeof m==='string'?({url:m,type:'image'}):m).filter(m=>m?.url):[]; const amenities=Array.isArray(p.amenities)?p.amenities:[]; const firstImage=imgs.find(m=>m.type!=='video')?.url||mockAccommodations[0].image; setAccommodation({providerId:p.provider_id,providerName:p.provider_name||'Accommodation provider',providerEmail:p.provider_email||'',providerPhone:p.provider_phone||'',id:p.id,name:p.title,location:[p.area,p.city].filter(Boolean).join(', '),area:p.area,price:`₦${Number(p.rent||0).toLocaleString()} / year`,numericPrice:Number(p.rent||0),serviceCharge:Number(p.service_charge||0),agentFee:Number(p.agent_fee||0),securityDeposit:Number(p.security_deposit||0),totalCost:Number(p.total_cost||0),type:String(p.property_type||'').replace(/-/g,' '),rooms:Number(p.bedrooms||1),availability:({available:'Available now',reserved:'Reserved',occupied:'Occupied',unavailable:'Unavailable'})[p.availability_status]||'Unavailable',facilities:amenities,verified:Boolean(p.is_verified),rating:Number(p.rating||0),reviews:Number(p.review_count||0),image:firstImage,images:imgs,description:p.description||''}) }}).catch(()=>{}).finally(()=>!cancelled&&setLoading(false)); return()=>{cancelled=true}},[id])
+  const [propertyError, setPropertyError] = useState('')
+  useEffect(() => {
+    let cancelled = false
+    setLoading(true)
+    setPropertyError('')
+    setAccommodation(null)
+    apiFetch(`/properties/${id}`)
+      .then((data) => {
+        if (cancelled) return
+        const p = data.property
+        if (!p) throw new Error('Property was not found.')
+        const images = Array.isArray(p.images)
+          ? p.images
+              .map((image) => typeof image === 'string' ? { url: image, type: 'image' } : image)
+              .filter((image) => image?.url)
+          : []
+        setAccommodation({
+          providerId: p.provider_id,
+          providerName: p.provider_name || 'Accommodation provider',
+          id: p.id,
+          name: p.title,
+          location: [p.area, p.city].filter(Boolean).join(', '),
+          area: p.area,
+          price: `₦${Number(p.rent || 0).toLocaleString()} / year`,
+          numericPrice: Number(p.rent || 0),
+          serviceCharge: Number(p.service_charge || 0),
+          agentFee: Number(p.agent_fee || 0),
+          securityDeposit: Number(p.security_deposit || 0),
+          totalCost: Number(p.total_cost || 0),
+          type: String(p.property_type || '').replace(/-/g, ' '),
+          rooms: Number(p.bedrooms || 1),
+          availability: ({ available: 'Available now', reserved: 'Reserved', occupied: 'Occupied', unavailable: 'Unavailable' })[p.availability_status] || 'Unavailable',
+          facilities: Array.isArray(p.amenities) ? p.amenities : [],
+          verified: Boolean(p.is_verified),
+          rating: Number(p.rating || 0),
+          reviews: Number(p.review_count || 0),
+          image: images.find((image) => image.type !== 'video')?.url || 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?auto=format&fit=crop&w=1000&q=85',
+          images,
+          description: p.description || '',
+        })
+      })
+      .catch((error) => {
+        if (!cancelled) setPropertyError(error.message || 'Unable to load this property.')
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => { cancelled = true }
+  }, [id])
   const [showPriceBreakdown, setShowPriceBreakdown] = useState(false)
+  const [showViewingForm, setShowViewingForm] = useState(false)
+  const [viewingRequest, setViewingRequest] = useState({
+    message: '',
+    preferred_viewing_date: '',
+    preferred_viewing_time: '',
+  })
+  const [viewingNotice, setViewingNotice] = useState('')
+  const [sendingViewingRequest, setSendingViewingRequest] = useState(false)
   const [reviewsData,setReviewsData]=useState({reviews:[],summary:{count:0,average:null}})
   const [eligibleBooking,setEligibleBooking]=useState(null)
   const [reviewForm,setReviewForm]=useState({rating:0,title:'',comment:''})
   const [reviewNotice,setReviewNotice]=useState('')
   const loadReviews=()=>apiFetch(`/reviews/property/${id}`).then(d=>setReviewsData({reviews:d.reviews||[],summary:d.summary||{count:0,average:null}})).catch(()=>{})
   useEffect(()=>{ loadReviews() },[id])
+  useEffect(() => {
+    let cancelled = false
+    const syncFavourite = async () => {
+      if (!getToken() || getStoredUser()?.role !== 'student') {
+        setSaved(false)
+        return
+      }
+      try {
+        const data = await apiFetch('/student/favourites')
+        if (!cancelled) {
+          setSaved((data.favourites || []).some((property) => String(property.id) === String(id)))
+        }
+      } catch (error) {
+        if (!cancelled) console.error('Unable to load saved properties:', error)
+      }
+    }
+    syncFavourite()
+    window.addEventListener('studentnest-auth', syncFavourite)
+    return () => {
+      cancelled = true
+      window.removeEventListener('studentnest-auth', syncFavourite)
+    }
+  }, [id])
   useEffect(()=>{
-    
-    
-    
-    if(!getToken()) return
+    if(getStoredUser()?.role !== 'student') return
     apiFetch('/reviews/mine').then(d=>{
       const match=(d.bookings||[]).find(b=>String(b.property_id)===String(id)&&!b.already_reviewed)
       setEligibleBooking(match||null)
@@ -36,11 +111,57 @@ function AccommodationDetails({ id }) {
       await loadReviews()
     }catch(e){ setReviewNotice(e.message) }
   }
-  const toggleSaved = async () => { if(!getToken()){window.location.hash='login';return} try { if(saved) await apiFetch(`/student/favourites/${id}`,{method:'DELETE'}); else await apiFetch(`/student/favourites/${id}`,{method:'POST'}); setSaved(v=>!v) } catch(e){ alert(e.message) } }
+  const toggleSaved = async () => {
+    if (getStoredUser()?.role !== 'student') {
+      if (!getToken()) window.location.hash = 'login'
+      else alert('Only student accounts can save properties.')
+      return
+    }
+    try {
+      if (saved) await apiFetch(`/student/favourites/${id}`, { method: 'DELETE' })
+      else await apiFetch(`/student/favourites/${id}`, { method: 'POST' })
+      setSaved((value) => !value)
+      window.dispatchEvent(new Event('studentnest-favourites'))
+    } catch (error) {
+      alert(error.message)
+    }
+  }
+  const submitViewingRequest = async (event) => {
+    event.preventDefault()
+    if (getStoredUser()?.role !== 'student') {
+      if (!getToken()) window.location.hash = 'login'
+      else alert('Only student accounts can request property viewings.')
+      return
+    }
+    setSendingViewingRequest(true)
+    setViewingNotice('')
+    try {
+      const result = await apiFetch('/student/inquiries', {
+        method: 'POST',
+        body: JSON.stringify({
+          property_id: Number(accommodation.id),
+          ...viewingRequest,
+        }),
+      })
+      setViewingNotice(result.message || 'Viewing request sent to the provider.')
+      setViewingRequest({
+        message: '',
+        preferred_viewing_date: '',
+        preferred_viewing_time: '',
+      })
+      setShowViewingForm(false)
+    } catch (error) {
+      setViewingNotice(error.message)
+    } finally {
+      setSendingViewingRequest(false)
+    }
+  }
   const messageProvider = async () => { if(!getToken()){window.location.hash='login';return} try { const d=await apiFetch('/messages/conversations',{method:'POST',body:JSON.stringify({other_user_id:Number(accommodation.providerId),property_id:Number(accommodation.id),context_key:'property'})}); localStorage.setItem('studentnest_open_chat',JSON.stringify({conversationId:d.conversation?.id||null,otherUserId:Number(accommodation.providerId),propertyId:Number(accommodation.id)})); localStorage.setItem('studentnest_last_chat_context','property'); window.location.hash='student-dashboard'; } catch(e){ alert(e.message) } }
 
   const toMediaUrl = mediaUrl
-  const gallery = accommodation.images?.length ? accommodation.images : [{url:accommodation.image,type:'image'},{url:'https://images.unsplash.com/photo-1560185008-b033106af5c3?auto=format&fit=crop&w=1000&q=80',type:'image'},{url:'https://images.unsplash.com/photo-1560185127-6a8c7e4f6e12?auto=format&fit=crop&w=1000&q=80',type:'image'},{url:'https://images.unsplash.com/photo-1560448204-603b3fc33ddc?auto=format&fit=crop&w=1000&q=80',type:'image'}]
+  const gallery = accommodation?.images?.length
+    ? accommodation.images
+    : accommodation ? [{ url: accommodation.image, type: 'image' }] : []
 
   
   
@@ -63,6 +184,21 @@ function AccommodationDetails({ id }) {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [lightboxOpen, gallery.length])
+
+  if (loading) {
+    return <main className="details-page container"><p role="status">Loading live property details…</p></main>
+  }
+  if (propertyError || !accommodation) {
+    return (
+      <main className="details-page container">
+        <section className="details-section" role="alert">
+          <h1>Property unavailable</h1>
+          <p>{propertyError || 'This property could not be found.'}</p>
+          <a href="#accommodation" className="btn btn-outline-ink">Back to accommodations</a>
+        </section>
+      </main>
+    )
+  }
 
   const amenities = [...new Set([...accommodation.facilities, 'Good road access', 'Student-friendly location'])]
 
@@ -89,7 +225,7 @@ function AccommodationDetails({ id }) {
             {gallery.map((image, index) => (
               <button
                 type="button"
-                key={image}
+                key={`${image.url}-${index}`}
                 className={`details-thumb ${index === activeIndex ? 'is-active' : ''}`}
                 onClick={() => setActiveIndex(index)}
                 aria-label={`Show photo ${index + 1} of ${gallery.length}`}
@@ -200,7 +336,65 @@ function AccommodationDetails({ id }) {
           <p className="details-card-label">Starting from</p>
           <div className="details-price">{accommodation.price}</div>
           
-          {accommodation.providerId && <><a className="btn btn-outline-ink details-contact" href={`#provider-${accommodation.providerId}`}>View provider profile</a><button className="btn btn-primary details-contact" onClick={messageProvider}>Message provider</button></>}
+          {accommodation.providerId && (
+            <>
+              <a className="btn btn-outline-ink details-contact" href={`#provider-${accommodation.providerId}`}>
+                View provider profile
+              </a>
+              <button className="btn btn-primary details-contact" onClick={messageProvider}>
+                Message provider
+              </button>
+              <button
+                className="btn btn-outline-ink details-contact"
+                onClick={() => {
+                  if (getStoredUser()?.role !== 'student') {
+                    if (!getToken()) window.location.hash = 'login'
+                    else setViewingNotice('Only student accounts can request property viewings.')
+                    return
+                  }
+                  setShowViewingForm((open) => !open)
+                  setViewingNotice('')
+                }}
+              >
+                Request a viewing
+              </button>
+            </>
+          )}
+          {viewingNotice && <p className="review-write-notice" role="status">{viewingNotice}</p>}
+          {showViewingForm && (
+            <form className="review-write-card" onSubmit={submitViewingRequest}>
+              <h3>Request a property viewing</h3>
+              <label>
+                Message to provider
+                <textarea
+                  rows="3"
+                  value={viewingRequest.message}
+                  onChange={(event) => setViewingRequest((current) => ({ ...current, message: event.target.value }))}
+                  required
+                  maxLength={2000}
+                />
+              </label>
+              <label>
+                Preferred date
+                <input
+                  type="date"
+                  value={viewingRequest.preferred_viewing_date}
+                  onChange={(event) => setViewingRequest((current) => ({ ...current, preferred_viewing_date: event.target.value }))}
+                />
+              </label>
+              <label>
+                Preferred time
+                <input
+                  type="time"
+                  value={viewingRequest.preferred_viewing_time}
+                  onChange={(event) => setViewingRequest((current) => ({ ...current, preferred_viewing_time: event.target.value }))}
+                />
+              </label>
+              <button type="submit" className="btn btn-primary" disabled={sendingViewingRequest}>
+                {sendingViewingRequest ? 'Sending…' : 'Send viewing request'}
+              </button>
+            </form>
+          )}
           <button className="btn btn-outline-ink details-contact" onClick={() => setShowPriceBreakdown(true)}>View total price</button>
           <p className="details-safety">🛡 Payments are protected through StudentNest after the provider approves payment eligibility.</p>
         </aside>

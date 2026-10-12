@@ -27,6 +27,7 @@ export function normaliseApiProperty(item) {
     area: item.area || '',
     price: `₦${numericPrice.toLocaleString()} / year`,
     numericPrice,
+    propertyType: String(item.property_type || '').toLowerCase(),
     type: String(item.property_type || '').replace(/-/g, ' '),
     rooms: Number(item.bedrooms || 1),
     availability: availability[item.availability_status] || 'Unavailable',

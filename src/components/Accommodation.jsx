@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
 import AccommodationCard from './AccommodationCard.jsx'
-import mockAccommodations from '../data/mockAccommodations.js'
 import { apiFetch } from '../lib_api.js'
 import { normaliseApiProperty } from '../lib_properties.js'
 import './Accommodation.css'
@@ -25,8 +24,20 @@ function Accommodation() {
 
   useEffect(() => {
     let cancelled = false
+    const timer = setTimeout(() => {
+      const params = new URLSearchParams()
+      if (filters.search.trim()) params.set('q', filters.search.trim())
+      if (filters.location !== 'Any location') params.set('area', filters.location)
+      if (filters.type !== 'Any type') params.set('property_type', filters.type)
+      if (filters.rooms !== 'Any rooms') params.set('bedrooms', filters.rooms)
+      if (filters.priceRange !== 'Any price') {
+        const [min, max] = String(filters.priceRange).split('-')
+        if (min) params.set('min_rent', min.replace('+', ''))
+        if (max) params.set('max_rent', max)
+      }
+      const query = params.toString()
     setLoading(true)
-    apiFetch('/properties')
+    apiFetch(`/properties${query ? `?${query}` : ''}`)
       .then((data) => {
         if (cancelled) return
         const items = (data.properties || []).map(normaliseApiProperty)
@@ -34,25 +45,26 @@ function Accommodation() {
         setApiError('')
       })
       .catch((error) => {
-        if (!cancelled) { setAccommodations([]); setApiError(error.message || 'Unable to load live listings.') }
+        if (!cancelled) {
+          setAccommodations([])
+          setApiError(error.message || 'Unable to load live listings.')
+        }
       })
       .finally(() => { if (!cancelled) setLoading(false) })
-    return () => { cancelled = true }
-  }, [])
+    }, 250)
+    return () => {
+      cancelled = true
+      clearTimeout(timer)
+    }
+  }, [filters.search, filters.location, filters.type, filters.priceRange, filters.rooms])
 
   const filteredAccommodations = useMemo(() => {
-    const source = accommodations.length ? accommodations : mockAccommodations
+    const source = accommodations
     const results = source.filter((item) => {
-      const searchable = `${item.name} ${item.location} ${item.type}`.toLowerCase()
-      const searchMatch = !filters.search.trim() || searchable.includes(filters.search.trim().toLowerCase())
-      const locationMatch = filters.location === 'Any location' || item.area === filters.location
-      const typeMatch = filters.type === 'Any type' || item.type === filters.type
-      const priceMatch = filters.priceRange === 'Any price' || (() => { const [min,max] = String(filters.priceRange).split('-'); if (String(filters.priceRange).endsWith('+')) return item.numericPrice >= Number(String(filters.priceRange).replace('+','')); return item.numericPrice >= Number(min) && item.numericPrice <= Number(max) })()
-      const roomsMatch = filters.rooms === 'Any rooms' || item.rooms === Number(filters.rooms)
       const availabilityMatch = filters.availability === 'Any availability' || item.availability === filters.availability
       const facilityMatch = filters.facility === 'Any facility' || item.facilities.includes(filters.facility)
 
-      return searchMatch && locationMatch && typeMatch && priceMatch && roomsMatch && availabilityMatch && facilityMatch
+      return availabilityMatch && facilityMatch
     })
 
     return [...results].sort((a, b) => {
@@ -98,10 +110,14 @@ function Accommodation() {
               </select>
               <select value={filters.type} onChange={(event) => updateFilter('type', event.target.value)} aria-label="Accommodation type">
                 <option value="Any type">Choose property type</option>
-                <option>Self-contain</option>
-                <option>Shared room</option>
-                <option>Hostel bedspace</option>
-                <option>2-bedroom flat</option>
+                <option value="self-contain">Self-contain</option>
+                <option value="single-room">Single room</option>
+                <option value="room-and-parlour">Room and parlour</option>
+                <option value="flat">Flat</option>
+                <option value="hostel">Hostel</option>
+                <option value="duplex">Duplex</option>
+                <option value="apartment">Apartment</option>
+                <option value="house">House</option>
               </select>
               <select value={filters.priceRange} onChange={(event) => updateFilter('priceRange', event.target.value)} aria-label="Maximum price">
                 <option value="Any price">Choose a price range</option>
@@ -173,8 +189,8 @@ function Accommodation() {
           ) : (
             <div className="empty-results">
               <div className="empty-results-icon">⌂</div>
-              <h3>No homes match those filters.</h3>
-              <p>{apiError ? `Live listings are not available yet: ${apiError}` : 'Try widening your location or price range, or clear the filters.'}</p>
+              <h3>{apiError ? 'Live listings are unavailable.' : 'No homes match those filters.'}</h3>
+              <p>{apiError ? `StudentNest could not load accommodation from the API: ${apiError}` : accommodations.length ? 'Try widening your location or price range, or clear the filters.' : 'No approved, verified properties are currently listed. Check back later.'}</p>
               <button className="btn btn-primary" onClick={clearFilters}>Show all homes</button>
             </div>
           )}
