@@ -34,7 +34,7 @@
   display: grid;
   grid-template-columns: 2fr 1fr;
   gap: 14px;
-  min-height: 240px;
+  height: 360px;
 }
 
 .details-main-image,
@@ -127,7 +127,7 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) 340px;
   gap: 60px;
-  padding-top: 16px;
+  padding-top: 21px;
 }
 
 .details-title-row {
@@ -604,7 +604,7 @@
 @media (max-width: 850px) {
   .details-gallery {
     grid-template-columns: 1fr;
-    min-height: 0;
+    height: auto;
   }
   .details-main-image {
     height: 320px;
