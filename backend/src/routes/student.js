@@ -1,8 +1,8 @@
-import { Router } from 'express';
-import { pool } from '../config/db.js';
-import { requireAuth, requireRole } from '../middleware/auth.js';
-import { createNotification } from './notifications.js';
-import { mediaUpload } from './profile.js';
+import { Router } from "express";
+import { pool } from "../config/db.js";
+import { requireAuth, requireRole } from "../middleware/auth.js";
+import { createNotification } from "./notifications.js";
+import { mediaUpload } from "./profile.js";
 
 const router = Router();
 
@@ -11,35 +11,35 @@ const router = Router();
 ========================================================= */
 
 router.post(
-  '/media',
+  "/media",
   requireAuth,
-  requireRole('student'),
-  mediaUpload.array('media', 12),
+  requireRole("student"),
+  mediaUpload.array("media", 12),
   async (req, res, next) => {
     try {
       if (!req.files?.length) {
         return res.status(400).json({
           success: false,
-          message: 'Select at least one image or walkthrough video.'
+          message: "Select at least one image or walkthrough video.",
         });
       }
 
       const media = req.files.map((f) => ({
-        url: `/uploads/${f.filename}`,
-        type: f.mimetype.startsWith('video/') ? 'video' : 'image',
+        url: `${req.protocol}://${req.get("host")}/uploads/${f.filename}`,
+        type: f.mimetype.startsWith("video/") ? "video" : "image",
         name: f.originalname,
-        size: f.size
+        size: f.size,
       }));
 
       res.status(201).json({
         success: true,
-        message: 'Post media uploaded.',
-        media
+        message: "Post media uploaded.",
+        media,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -61,9 +61,9 @@ function propertySelect() {
 ========================================================= */
 
 router.get(
-  '/favourites',
+  "/favourites",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -73,23 +73,23 @@ router.get(
         WHERE f.user_id = ?
         ORDER BY f.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       res.json({
         success: true,
-        favourites: rows
+        favourites: rows,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 router.post(
-  '/favourites/:propertyId',
+  "/favourites/:propertyId",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const id = Number(req.params.propertyId);
@@ -97,7 +97,7 @@ router.post(
       if (!id) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid property.'
+          message: "Invalid property.",
         });
       }
 
@@ -111,13 +111,13 @@ router.post(
           AND availability_status = 'available'
         LIMIT 1
         `,
-        [id]
+        [id],
       );
 
       if (!p.length) {
         return res.status(404).json({
           success: false,
-          message: 'Property not found or unavailable.'
+          message: "Property not found or unavailable.",
         });
       }
 
@@ -126,23 +126,23 @@ router.post(
         INSERT IGNORE INTO favourites (user_id, property_id)
         VALUES (?, ?)
         `,
-        [req.user.id, id]
+        [req.user.id, id],
       );
 
       res.status(201).json({
         success: true,
-        message: 'Property saved to favourites.'
+        message: "Property saved to favourites.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 router.delete(
-  '/favourites/:propertyId',
+  "/favourites/:propertyId",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       await pool.execute(
@@ -151,17 +151,17 @@ router.delete(
         WHERE user_id = ?
           AND property_id = ?
         `,
-        [req.user.id, Number(req.params.propertyId)]
+        [req.user.id, Number(req.params.propertyId)],
       );
 
       res.json({
         success: true,
-        message: 'Property removed from favourites.'
+        message: "Property removed from favourites.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -169,9 +169,9 @@ router.delete(
 ========================================================= */
 
 router.get(
-  '/inquiries',
+  "/inquiries",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       /* ---------------------------------------------
@@ -195,7 +195,7 @@ router.get(
         WHERE i.student_id = ?
         ORDER BY i.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       /* ---------------------------------------------
@@ -247,7 +247,7 @@ router.get(
 
         ORDER BY ri.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       /* ---------------------------------------------
@@ -294,7 +294,7 @@ router.get(
 
         ORDER BY tc.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       /* ---------------------------------------------
@@ -359,7 +359,7 @@ router.get(
 
         ORDER BY ri.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       /* ---------------------------------------------
@@ -420,7 +420,7 @@ router.get(
 
         ORDER BY tc.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       /* ---------------------------------------------
@@ -432,20 +432,17 @@ router.get(
         ...roommateRows,
         ...takeoverRows,
         ...roommateSentRows,
-        ...takeoverSentRows
-      ].sort(
-        (a, b) =>
-          new Date(b.created_at) - new Date(a.created_at)
-      );
+        ...takeoverSentRows,
+      ].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       res.json({
         success: true,
-        inquiries
+        inquiries,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -453,35 +450,33 @@ router.get(
 ========================================================= */
 
 router.post(
-  '/inquiries',
+  "/inquiries",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const propertyId = Number(req.body?.property_id);
-      const message = String(req.body?.message || '').trim();
+      const message = String(req.body?.message || "").trim();
 
-      const preferredViewingDate =
-        req.body?.preferred_viewing_date
-          ? String(req.body.preferred_viewing_date).trim()
-          : null;
+      const preferredViewingDate = req.body?.preferred_viewing_date
+        ? String(req.body.preferred_viewing_date).trim()
+        : null;
 
-      const preferredViewingTime =
-        req.body?.preferred_viewing_time
-          ? String(req.body.preferred_viewing_time).trim()
-          : null;
+      const preferredViewingTime = req.body?.preferred_viewing_time
+        ? String(req.body.preferred_viewing_time).trim()
+        : null;
 
       if (!propertyId || !message) {
         return res.status(400).json({
           success: false,
-          message: 'Property and message are required.'
+          message: "Property and message are required.",
         });
       }
 
       if (message.length > 2000) {
         return res.status(400).json({
           success: false,
-          message: 'Message is too long.'
+          message: "Message is too long.",
         });
       }
 
@@ -491,17 +486,14 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid preferred viewing date.'
+          message: "Invalid preferred viewing date.",
         });
       }
 
-      if (
-        preferredViewingTime &&
-        !/^\d{2}:\d{2}$/.test(preferredViewingTime)
-      ) {
+      if (preferredViewingTime && !/^\d{2}:\d{2}$/.test(preferredViewingTime)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid preferred viewing time.'
+          message: "Invalid preferred viewing time.",
         });
       }
 
@@ -513,13 +505,13 @@ router.post(
           AND p.is_verified = 1
         LIMIT 1
         `,
-        [propertyId]
+        [propertyId],
       );
 
       if (!rows.length) {
         return res.status(404).json({
           success: false,
-          message: 'Property not found or unavailable.'
+          message: "Property not found or unavailable.",
         });
       }
 
@@ -543,22 +535,22 @@ router.post(
           req.user.id,
           p.provider_id,
           propertyId,
-          'property_viewing',
+          "property_viewing",
           message,
           preferredViewingDate,
-          preferredViewingTime
-        ]
+          preferredViewingTime,
+        ],
       );
 
       await createNotification(
         p.provider_id,
-        'inquiry',
-        'New student inquiry',
+        "inquiry",
+        "New student inquiry",
         `${req.user.full_name} is interested in ${p.title}.`,
         {
           inquiry_id: result.insertId,
-          property_id: propertyId
-        }
+          property_id: propertyId,
+        },
       );
 
       const [created] = await pool.execute(
@@ -576,18 +568,18 @@ router.post(
           ON u.id = i.provider_id
         WHERE i.id = ?
         `,
-        [result.insertId]
+        [result.insertId],
       );
 
       res.status(201).json({
         success: true,
-        message: 'Inquiry sent to the provider.',
-        inquiry: created[0]
+        message: "Inquiry sent to the provider.",
+        inquiry: created[0],
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -595,9 +587,9 @@ router.post(
 ========================================================= */
 
 router.patch(
-  '/inquiries/:id/cancel',
+  "/inquiries/:id/cancel",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [r] = await pool.execute(
@@ -610,24 +602,24 @@ router.patch(
           AND student_id = ?
           AND status IN ('pending', 'responded')
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!r.affectedRows) {
         return res.status(404).json({
           success: false,
-          message: 'Inquiry not found or already closed.'
+          message: "Inquiry not found or already closed.",
         });
       }
 
       res.json({
         success: true,
-        message: 'Inquiry closed.'
+        message: "Inquiry closed.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -635,16 +627,16 @@ router.patch(
 ========================================================= */
 
 const TRAIT_OPTIONS = [
-  'Clean',
-  'Quiet',
-  'Non-smoker',
-  'Early sleeper',
-  'Night owl',
-  'Studious',
-  'Friendly',
-  'Organised',
-  'Pet-friendly',
-  'Vegetarian/Halal-conscious'
+  "Clean",
+  "Quiet",
+  "Non-smoker",
+  "Early sleeper",
+  "Night owl",
+  "Studious",
+  "Friendly",
+  "Organised",
+  "Pet-friendly",
+  "Vegetarian/Halal-conscious",
 ];
 
 /* =========================================================
@@ -652,9 +644,9 @@ const TRAIT_OPTIONS = [
 ========================================================= */
 
 router.get(
-  '/roommates',
+  "/roommates",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -680,7 +672,7 @@ router.get(
 
         ORDER BY rl.created_at DESC
         `,
-        [req.user.id, req.user.id]
+        [req.user.id, req.user.id],
       );
 
       const listings = rows.map((r) => ({
@@ -688,18 +680,18 @@ router.get(
         traits: safeJsonParse(r.traits, []),
         media: safeJsonParse(r.media, []),
         is_mine: Boolean(r.is_mine),
-        already_interested: Boolean(r.already_interested)
+        already_interested: Boolean(r.already_interested),
       }));
 
       res.json({
         success: true,
         listings,
-        traitOptions: TRAIT_OPTIONS
+        traitOptions: TRAIT_OPTIONS,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -707,9 +699,9 @@ router.get(
 ========================================================= */
 
 router.get(
-  '/roommates/mine',
+  "/roommates/mine",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -719,7 +711,7 @@ router.get(
         WHERE student_id = ?
         ORDER BY created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       const listings = [];
@@ -738,25 +730,25 @@ router.get(
           WHERE listing_id = ?
           ORDER BY created_at DESC
           `,
-          [r.id]
+          [r.id],
         );
 
         listings.push({
           ...r,
           traits: safeJsonParse(r.traits, []),
           media: safeJsonParse(r.media, []),
-          interests
+          interests,
         });
       }
 
       res.json({
         success: true,
-        listings
+        listings,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -764,25 +756,23 @@ router.get(
 ========================================================= */
 
 router.post(
-  '/roommates',
+  "/roommates",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const b = req.body || {};
 
-      const name = String(b.name || '').trim();
-      const level = String(b.level || '').trim();
-      const course = String(b.course || '').trim();
-      const area = String(b.area || '').trim();
-      const duration = String(b.duration || '').trim();
-      const description = String(b.description || '').trim();
+      const name = String(b.name || "").trim();
+      const level = String(b.level || "").trim();
+      const course = String(b.course || "").trim();
+      const area = String(b.area || "").trim();
+      const duration = String(b.duration || "").trim();
+      const description = String(b.description || "").trim();
 
-      const gender = ['male', 'female', 'any'].includes(
-        b.gender_preference
-      )
+      const gender = ["male", "female", "any"].includes(b.gender_preference)
         ? b.gender_preference
-        : 'any';
+        : "any";
 
       const traits = Array.isArray(b.traits)
         ? b.traits.filter((t) => TRAIT_OPTIONS.includes(t))
@@ -791,15 +781,12 @@ router.post(
       const rent = Number(b.rent);
       const split = Number(b.split_cost);
 
-      const media = Array.isArray(b.media)
-        ? b.media.slice(0, 12)
-        : [];
+      const media = Array.isArray(b.media) ? b.media.slice(0, 12) : [];
 
       if (!name || !level || !course || !area || !duration) {
         return res.status(400).json({
           success: false,
-          message:
-            'Name, level, course, area and duration are required.'
+          message: "Name, level, course, area and duration are required.",
         });
       }
 
@@ -811,8 +798,7 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            'Rent and split cost must be non-negative numbers.'
+          message: "Rent and split cost must be non-negative numbers.",
         });
       }
 
@@ -847,19 +833,19 @@ router.post(
           JSON.stringify(media),
           rent,
           split,
-          duration
-        ]
+          duration,
+        ],
       );
 
       res.status(201).json({
         success: true,
-        message: 'Your roommate posting is live.',
-        id: result.insertId
+        message: "Your roommate posting is live.",
+        id: result.insertId,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -867,9 +853,9 @@ router.post(
 ========================================================= */
 
 router.delete(
-  '/roommates/:id',
+  "/roommates/:id",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [r] = await pool.execute(
@@ -879,24 +865,24 @@ router.delete(
         WHERE id = ?
           AND student_id = ?
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!r.affectedRows) {
         return res.status(404).json({
           success: false,
-          message: 'Listing not found.'
+          message: "Listing not found.",
         });
       }
 
       res.json({
         success: true,
-        message: 'Posting closed.'
+        message: "Posting closed.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -908,16 +894,16 @@ router.delete(
 ========================================================= */
 
 router.post(
-  '/roommates/:id/interest',
+  "/roommates/:id/interest",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const b = req.body || {};
 
-      const name = String(b.name || '').trim();
-      const level = String(b.level || '').trim();
-      const phone = String(b.phone || '').trim();
+      const name = String(b.name || "").trim();
+      const level = String(b.level || "").trim();
+      const phone = String(b.phone || "").trim();
 
       const age = Number(b.age);
 
@@ -931,8 +917,7 @@ router.post(
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            'Name, level, a valid age and phone number are required.'
+          message: "Name, level, a valid age and phone number are required.",
         });
       }
 
@@ -950,14 +935,13 @@ router.post(
           AND rl.status = 'active'
         LIMIT 1
         `,
-        [req.params.id]
+        [req.params.id],
       );
 
       if (!rows.length) {
         return res.status(404).json({
           success: false,
-          message:
-            'This roommate posting is no longer available.'
+          message: "This roommate posting is no longer available.",
         });
       }
 
@@ -966,8 +950,7 @@ router.post(
       if (listing.student_id === req.user.id) {
         return res.status(400).json({
           success: false,
-          message:
-            'You cannot express interest in your own posting.'
+          message: "You cannot express interest in your own posting.",
         });
       }
 
@@ -993,40 +976,32 @@ router.post(
           age = VALUES(age),
           phone = VALUES(phone)
         `,
-        [
-          req.params.id,
-          req.user.id,
-          name,
-          level,
-          age,
-          phone
-        ]
+        [req.params.id, req.user.id, name, level, age, phone],
       );
 
       await createNotification(
         listing.student_id,
-        'roommate_interest',
-        'New roommate interest',
+        "roommate_interest",
+        "New roommate interest",
         `${name} is interested in your "${listing.name}" roommate posting.`,
         {
-          listing_id: Number(req.params.id)
-        }
+          listing_id: Number(req.params.id),
+        },
       );
 
       res.status(201).json({
         success: true,
-        message:
-          'Your interest has been sent to the poster.',
+        message: "Your interest has been sent to the poster.",
         poster: {
           name: listing.poster_name,
           phone: listing.poster_phone || null,
-          email: listing.poster_email
-        }
+          email: listing.poster_email,
+        },
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1034,19 +1009,17 @@ router.post(
 ========================================================= */
 
 router.patch(
-  '/roommates/interests/:id/respond',
+  "/roommates/interests/:id/respond",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
-      const response = String(
-        req.body?.response || ''
-      ).trim();
+      const response = String(req.body?.response || "").trim();
 
       if (!response) {
         return res.status(400).json({
           success: false,
-          message: 'Response is required.'
+          message: "Response is required.",
         });
       }
 
@@ -1064,14 +1037,13 @@ router.patch(
           AND rl.student_id = ?
         LIMIT 1
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!rows.length) {
         return res.status(404).json({
           success: false,
-          message:
-            'Interest not found on your posting.'
+          message: "Interest not found on your posting.",
         });
       }
 
@@ -1081,28 +1053,28 @@ router.patch(
         SET poster_response = ?
         WHERE id = ?
         `,
-        [response, req.params.id]
+        [response, req.params.id],
       );
 
       await createNotification(
         rows[0].student_id,
-        'roommate_response',
-        'Roommate Finder response',
+        "roommate_response",
+        "Roommate Finder response",
         `${req.user.full_name} responded to your interest in ${rows[0].name}.`,
         {
           interest_id: rows[0].id,
-          listing_id: null
-        }
+          listing_id: null,
+        },
       );
 
       res.json({
         success: true,
-        message: 'Response sent to the student.'
+        message: "Response sent to the student.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1110,9 +1082,9 @@ router.patch(
 ========================================================= */
 
 router.get(
-  '/takeovers',
+  "/takeovers",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -1138,24 +1110,24 @@ router.get(
 
         ORDER BY tl.created_at DESC
         `,
-        [req.user.id, req.user.id]
+        [req.user.id, req.user.id],
       );
 
       const listings = rows.map((r) => ({
         ...r,
         media: safeJsonParse(r.media, []),
         is_mine: Boolean(r.is_mine),
-        already_contacted: Boolean(r.already_contacted)
+        already_contacted: Boolean(r.already_contacted),
       }));
 
       res.json({
         success: true,
-        listings
+        listings,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1163,9 +1135,9 @@ router.get(
 ========================================================= */
 
 router.get(
-  '/takeovers/mine',
+  "/takeovers/mine",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -1175,7 +1147,7 @@ router.get(
         WHERE student_id = ?
         ORDER BY created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       const listings = [];
@@ -1193,24 +1165,24 @@ router.get(
           WHERE listing_id = ?
           ORDER BY created_at DESC
           `,
-          [r.id]
+          [r.id],
         );
 
         listings.push({
           ...r,
           media: safeJsonParse(r.media, []),
-          contacts
+          contacts,
         });
       }
 
       res.json({
         success: true,
-        listings
+        listings,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1218,85 +1190,66 @@ router.get(
 ========================================================= */
 
 router.post(
-  '/takeovers',
+  "/takeovers",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const b = req.body || {};
 
-      const title = String(b.title || '').trim();
-      const area = String(b.area || '').trim();
-      const reason = String(b.reason || '').trim();
+      const title = String(b.title || "").trim();
+      const area = String(b.area || "").trim();
+      const reason = String(b.reason || "").trim();
 
-      const availableFrom = String(
-        b.available_from || ''
-      ).trim();
+      const availableFrom = String(b.available_from || "").trim();
 
-      const description = String(
-        b.description || ''
-      ).trim();
+      const description = String(b.description || "").trim();
 
       const price = Number(b.price);
 
       const monthsLeft =
-        b.months_left === '' ||
-        b.months_left == null
+        b.months_left === "" || b.months_left == null
           ? null
           : Number(b.months_left);
 
       const amountRequired =
-        b.amount_required === '' ||
-        b.amount_required == null
+        b.amount_required === "" || b.amount_required == null
           ? null
           : Number(b.amount_required);
 
-      const media = Array.isArray(b.media)
-        ? b.media.slice(0, 12)
-        : [];
+      const media = Array.isArray(b.media) ? b.media.slice(0, 12) : [];
 
-      if (
-        !title ||
-        !area ||
-        !reason ||
-        !availableFrom
-      ) {
+      if (!title || !area || !reason || !availableFrom) {
         return res.status(400).json({
           success: false,
-          message:
-            'Title, area, reason and availability date are required.'
+          message: "Title, area, reason and availability date are required.",
         });
       }
 
       if (!Number.isFinite(price) || price < 0) {
         return res.status(400).json({
           success: false,
-          message:
-            'Price must be a non-negative number.'
+          message: "Price must be a non-negative number.",
         });
       }
 
       if (
         monthsLeft !== null &&
-        (!Number.isInteger(monthsLeft) ||
-          monthsLeft < 0)
+        (!Number.isInteger(monthsLeft) || monthsLeft < 0)
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            'Months left must be a non-negative whole number.'
+          message: "Months left must be a non-negative whole number.",
         });
       }
 
       if (
         amountRequired !== null &&
-        (!Number.isFinite(amountRequired) ||
-          amountRequired < 0)
+        (!Number.isFinite(amountRequired) || amountRequired < 0)
       ) {
         return res.status(400).json({
           success: false,
-          message:
-            'Amount required must be a non-negative number.'
+          message: "Amount required must be a non-negative number.",
         });
       }
 
@@ -1327,19 +1280,19 @@ router.post(
           reason,
           availableFrom,
           description || null,
-          JSON.stringify(media)
-        ]
+          JSON.stringify(media),
+        ],
       );
 
       res.status(201).json({
         success: true,
-        message: 'Your takeover posting is live.',
-        id: result.insertId
+        message: "Your takeover posting is live.",
+        id: result.insertId,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1347,9 +1300,9 @@ router.post(
 ========================================================= */
 
 router.delete(
-  '/takeovers/:id',
+  "/takeovers/:id",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const [r] = await pool.execute(
@@ -1359,24 +1312,24 @@ router.delete(
         WHERE id = ?
           AND student_id = ?
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!r.affectedRows) {
         return res.status(404).json({
           success: false,
-          message: 'Listing not found.'
+          message: "Listing not found.",
         });
       }
 
       res.json({
         success: true,
-        message: 'Posting closed.'
+        message: "Posting closed.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1384,21 +1337,21 @@ router.delete(
 ========================================================= */
 
 router.post(
-  '/takeovers/:id/contact',
+  "/takeovers/:id/contact",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
       const b = req.body || {};
 
-      const name = String(b.name || '').trim();
-      const phone = String(b.phone || '').trim();
-      const message = String(b.message || '').trim();
+      const name = String(b.name || "").trim();
+      const phone = String(b.phone || "").trim();
+      const message = String(b.message || "").trim();
 
       if (!name || !phone) {
         return res.status(400).json({
           success: false,
-          message: 'Name and phone number are required.'
+          message: "Name and phone number are required.",
         });
       }
 
@@ -1416,14 +1369,13 @@ router.post(
           AND tl.status = 'active'
         LIMIT 1
         `,
-        [req.params.id]
+        [req.params.id],
       );
 
       if (!rows.length) {
         return res.status(404).json({
           success: false,
-          message:
-            'This takeover posting is no longer available.'
+          message: "This takeover posting is no longer available.",
         });
       }
 
@@ -1432,8 +1384,7 @@ router.post(
       if (listing.student_id === req.user.id) {
         return res.status(400).json({
           success: false,
-          message:
-            'You cannot contact yourself about your own posting.'
+          message: "You cannot contact yourself about your own posting.",
         });
       }
 
@@ -1454,39 +1405,32 @@ router.post(
           phone = VALUES(phone),
           message = VALUES(message)
         `,
-        [
-          req.params.id,
-          req.user.id,
-          name,
-          phone,
-          message || null
-        ]
+        [req.params.id, req.user.id, name, phone, message || null],
       );
 
       await createNotification(
         listing.student_id,
-        'takeover_contact',
-        'New takeover contact',
+        "takeover_contact",
+        "New takeover contact",
         `${name} wants to talk about your "${listing.title}" posting.`,
         {
-          listing_id: Number(req.params.id)
-        }
+          listing_id: Number(req.params.id),
+        },
       );
 
       res.status(201).json({
         success: true,
-        message:
-          'Your contact details have been sent to the poster.',
+        message: "Your contact details have been sent to the poster.",
         poster: {
           name: listing.poster_name,
           phone: listing.poster_phone || null,
-          email: listing.poster_email
-        }
+          email: listing.poster_email,
+        },
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1494,19 +1438,17 @@ router.post(
 ========================================================= */
 
 router.patch(
-  '/takeovers/contacts/:id/respond',
+  "/takeovers/contacts/:id/respond",
   requireAuth,
-  requireRole('student'),
+  requireRole("student"),
   async (req, res, next) => {
     try {
-      const response = String(
-        req.body?.response || ''
-      ).trim();
+      const response = String(req.body?.response || "").trim();
 
       if (!response) {
         return res.status(400).json({
           success: false,
-          message: 'Response is required.'
+          message: "Response is required.",
         });
       }
 
@@ -1523,14 +1465,13 @@ router.patch(
           AND tl.student_id = ?
         LIMIT 1
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!rows.length) {
         return res.status(404).json({
           success: false,
-          message:
-            'Takeover contact not found on your posting.'
+          message: "Takeover contact not found on your posting.",
         });
       }
 
@@ -1540,27 +1481,27 @@ router.patch(
         SET poster_response = ?
         WHERE id = ?
         `,
-        [response, req.params.id]
+        [response, req.params.id],
       );
 
       await createNotification(
         rows[0].student_id,
-        'takeover_response',
-        'Takeover response',
+        "takeover_response",
+        "Takeover response",
         `${req.user.full_name} responded to your interest in ${rows[0].title}.`,
         {
-          contact_id: rows[0].id
-        }
+          contact_id: rows[0].id,
+        },
       );
 
       res.json({
         success: true,
-        message: 'Response sent to the student.'
+        message: "Response sent to the student.",
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1568,9 +1509,9 @@ router.patch(
 ========================================================= */
 
 router.get(
-  '/provider/inquiries',
+  "/provider/inquiries",
   requireAuth,
-  requireRole('provider'),
+  requireRole("provider"),
   async (req, res, next) => {
     try {
       const [rows] = await pool.execute(
@@ -1598,17 +1539,17 @@ router.get(
 
         ORDER BY i.created_at DESC
         `,
-        [req.user.id]
+        [req.user.id],
       );
 
       res.json({
         success: true,
-        inquiries: rows
+        inquiries: rows,
       });
     } catch (e) {
       next(e);
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -1616,71 +1557,52 @@ router.get(
 ========================================================= */
 
 router.patch(
-  '/provider/inquiries/:id/respond',
+  "/provider/inquiries/:id/respond",
   requireAuth,
-  requireRole('provider'),
+  requireRole("provider"),
   async (req, res, next) => {
     const conn = await pool.getConnection();
 
     try {
       const action = String(
-        req.body?.action ||
-        req.body?.decision ||
-        'approve'
+        req.body?.action || req.body?.decision || "approve",
       ).toLowerCase();
 
-      const response = String(
-        req.body?.response || ''
-      ).trim();
+      const response = String(req.body?.response || "").trim();
 
-      const appointmentDate =
-        req.body?.appointment_date
-          ? String(req.body.appointment_date).trim()
-          : null;
+      const appointmentDate = req.body?.appointment_date
+        ? String(req.body.appointment_date).trim()
+        : null;
 
-      const appointmentTime =
-        req.body?.appointment_time
-          ? String(req.body.appointment_time).trim()
-          : null;
+      const appointmentTime = req.body?.appointment_time
+        ? String(req.body.appointment_time).trim()
+        : null;
 
-      if (
-        !['approve', 'change', 'reject'].includes(action)
-      ) {
+      if (!["approve", "change", "reject"].includes(action)) {
         return res.status(400).json({
           success: false,
-          message:
-            'Action must be approve, change or reject.'
+          message: "Action must be approve, change or reject.",
         });
       }
 
-      if (
-        action !== 'reject' &&
-        (!appointmentDate || !appointmentTime)
-      ) {
+      if (action !== "reject" && (!appointmentDate || !appointmentTime)) {
         return res.status(400).json({
           success: false,
-          message:
-            'Please provide an appointment date and time.'
+          message: "Please provide an appointment date and time.",
         });
       }
 
-      if (
-        appointmentDate &&
-        !/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate)
-      ) {
+      if (appointmentDate && !/^\d{4}-\d{2}-\d{2}$/.test(appointmentDate)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid appointment date.'
+          message: "Invalid appointment date.",
         });
       }
 
-      if (
-        appointmentTime &&
-        !/^\d{2}:\d{2}$/.test(appointmentTime)
-      ) {
+      if (appointmentTime && !/^\d{2}:\d{2}$/.test(appointmentTime)) {
         return res.status(400).json({
           success: false,
-          message: 'Invalid appointment time.'
+          message: "Invalid appointment time.",
         });
       }
 
@@ -1695,7 +1617,7 @@ router.patch(
           AND inquiry_type = 'property_viewing'
         FOR UPDATE
         `,
-        [req.params.id, req.user.id]
+        [req.params.id, req.user.id],
       );
 
       if (!rows.length) {
@@ -1703,22 +1625,18 @@ router.patch(
 
         return res.status(404).json({
           success: false,
-          message: 'Viewing request not found.'
+          message: "Viewing request not found.",
         });
       }
 
       const i = rows[0];
 
-      if (
-        i.status === 'closed' &&
-        action !== 'change'
-      ) {
+      if (i.status === "closed" && action !== "change") {
         await conn.rollback();
 
         return res.status(409).json({
           success: false,
-          message:
-            'This viewing request is already closed.'
+          message: "This viewing request is already closed.",
         });
       }
 
@@ -1726,7 +1644,7 @@ router.patch(
          REJECT
       --------------------------------------------- */
 
-      if (action === 'reject') {
+      if (action === "reject") {
         await conn.execute(
           `
           UPDATE inquiries
@@ -1739,28 +1657,28 @@ router.patch(
           `,
           [
             response ||
-              'The provider is unable to accommodate this viewing request.',
+              "The provider is unable to accommodate this viewing request.",
             req.params.id,
-            req.user.id
-          ]
+            req.user.id,
+          ],
         );
 
         await conn.commit();
 
         await createNotification(
           i.student_id,
-          'viewing_declined',
-          'Viewing request update',
-          'The provider declined your viewing request.',
+          "viewing_declined",
+          "Viewing request update",
+          "The provider declined your viewing request.",
           {
             inquiry_id: i.id,
-            property_id: i.property_id
-          }
+            property_id: i.property_id,
+          },
         );
 
         return res.json({
           success: true,
-          message: 'Viewing request declined.'
+          message: "Viewing request declined.",
         });
       }
 
@@ -1769,16 +1687,15 @@ router.patch(
       --------------------------------------------- */
 
       const activeStatuses = [
-        'pending_provider',
-        'pending_student_confirmation',
-        'approved',
-        'payment_pending',
-        'paid',
-        'active'
+        "pending_provider",
+        "pending_student_confirmation",
+        "approved",
+        "payment_pending",
+        "paid",
+        "active",
       ];
 
-      const activePlaceholders =
-        activeStatuses.map(() => '?').join(',');
+      const activePlaceholders = activeStatuses.map(() => "?").join(",");
 
       const [conflict] = await conn.execute(
         `
@@ -1805,8 +1722,8 @@ router.patch(
           Number(i.booking_id || 0),
           ...activeStatuses,
           appointmentDate,
-          appointmentDate
-        ]
+          appointmentDate,
+        ],
       );
 
       if (conflict.length) {
@@ -1815,7 +1732,7 @@ router.patch(
         return res.status(409).json({
           success: false,
           message:
-            'That appointment slot is already occupied by another booking.'
+            "That appointment slot is already occupied by another booking.",
         });
       }
 
@@ -1823,9 +1740,7 @@ router.patch(
          CREATE OR UPDATE BOOKING
       --------------------------------------------- */
 
-      let bookingId = Number(
-        i.booking_id || 0
-      );
+      let bookingId = Number(i.booking_id || 0);
 
       if (!bookingId) {
         const [pRows] = await conn.execute(
@@ -1835,7 +1750,7 @@ router.patch(
           WHERE id = ?
           LIMIT 1
           `,
-          [i.property_id]
+          [i.property_id],
         );
 
         if (!pRows.length) {
@@ -1843,28 +1758,18 @@ router.patch(
 
           return res.status(404).json({
             success: false,
-            message: 'Property not found.'
+            message: "Property not found.",
           });
         }
 
         const p = pRows[0];
 
         const rent = Number(p.rent || 0);
-        const agentFee = Number(
-          p.agent_fee || 0
-        );
-        const serviceFee = Number(
-          p.service_charge || 0
-        );
-        const securityDeposit = Number(
-          p.security_deposit || 0
-        );
+        const agentFee = Number(p.agent_fee || 0);
+        const serviceFee = Number(p.service_charge || 0);
+        const securityDeposit = Number(p.security_deposit || 0);
 
-        const total =
-          rent +
-          agentFee +
-          serviceFee +
-          securityDeposit;
+        const total = rent + agentFee + serviceFee + securityDeposit;
 
         const [b] = await conn.execute(
           `
@@ -1919,8 +1824,8 @@ router.patch(
             securityDeposit,
             total,
             i.message,
-            i.id
-          ]
+            i.id,
+          ],
         );
 
         bookingId = b.insertId;
@@ -1944,8 +1849,8 @@ router.patch(
             appointmentDate,
             appointmentDate,
             bookingId,
-            req.user.id
-          ]
+            req.user.id,
+          ],
         );
       }
 
@@ -1955,11 +1860,9 @@ router.patch(
 
       const reply =
         response ||
-        (
-          action === 'change'
-            ? 'The provider proposed a different viewing time. Please review and accept it in your Student Space.'
-            : 'Your viewing appointment is available. Please review and accept the proposed time in your Student Space.'
-        );
+        (action === "change"
+          ? "The provider proposed a different viewing time. Please review and accept it in your Student Space."
+          : "Your viewing appointment is available. Please review and accept the proposed time in your Student Space.");
 
       await conn.execute(
         `
@@ -1981,8 +1884,8 @@ router.patch(
           appointmentTime,
           bookingId,
           req.params.id,
-          req.user.id
-        ]
+          req.user.id,
+        ],
       );
 
       await conn.commit();
@@ -1993,29 +1896,29 @@ router.patch(
 
       await createNotification(
         i.student_id,
-        'viewing_response',
-        action === 'change'
-          ? 'Viewing time changed'
-          : 'Viewing request approved',
+        "viewing_response",
+        action === "change"
+          ? "Viewing time changed"
+          : "Viewing request approved",
         `${req.user.full_name} proposed ${appointmentDate} at ${appointmentTime}.`,
         {
           inquiry_id: i.id,
           booking_id: bookingId,
           property_id: i.property_id,
           appointment_date: appointmentDate,
-          appointment_time: appointmentTime
-        }
+          appointment_time: appointmentTime,
+        },
       );
 
       res.json({
         success: true,
         message:
-          action === 'change'
-            ? 'Appointment date and time updated.'
-            : 'Viewing request approved. Student must accept the appointment before payment becomes available.',
+          action === "change"
+            ? "Appointment date and time updated."
+            : "Viewing request approved. Student must accept the appointment before payment becomes available.",
         booking_id: bookingId,
         appointment_date: appointmentDate,
-        appointment_time: appointmentTime
+        appointment_time: appointmentTime,
       });
     } catch (e) {
       try {
@@ -2026,7 +1929,7 @@ router.patch(
     } finally {
       conn.release();
     }
-  }
+  },
 );
 
 /* =========================================================
@@ -2038,7 +1941,7 @@ function safeJsonParse(value, fallback) {
     return fallback;
   }
 
-  if (typeof value === 'object') {
+  if (typeof value === "object") {
     return value;
   }
 

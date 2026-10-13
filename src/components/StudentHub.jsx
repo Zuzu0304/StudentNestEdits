@@ -86,8 +86,38 @@ function RoommateFinder({flash,onContact}){
  </FeatureSection>
 }
 
-function PostMediaPreview({media}){
- const first=(Array.isArray(media)?media:[]).find(m=>m?.url)||null; if(!first)return null; const src=mediaUrl(first); const fallback=e=>{if(e.currentTarget.dataset.fallbackApplied)return;e.currentTarget.dataset.fallbackApplied='true';e.currentTarget.src='/placeholder.svg'}; return <div className="post-media-preview">{first.type==='video'?<video src={src} controls onError={fallback}/>:<img src={src} alt="Takeover listing" onError={fallback}/>}</div>
+Function PostMediaPreview({ media }) {
+  const first = (Array.isArray(media) ? media : [])
+    .find((m) => m?.url);
+
+  if (!first) return null;
+
+  const src = mediaUrl(first.url);
+
+  const fallback = (e) => {
+    if (e.currentTarget.dataset.fallbackApplied) return;
+    e.currentTarget.dataset.fallbackApplied = "true";
+    e.currentTarget.src = "/placeholder.svg";
+  };
+
+  return (
+    <div className="post-media-preview">
+      {first.type === "video" ? (
+        <video
+          src={src}
+          controls
+          onError={fallback}
+        />
+      ) : (
+        <img
+          src={src}
+          alt="Student listing"
+          onError={fallback}
+        />
+      )}
+    </div>
+  );
+
 }
 
 function StudentMediaPicker({media,setMedia,flash}){

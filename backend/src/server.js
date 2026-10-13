@@ -83,7 +83,8 @@ app.use(
 
 const PORT = Number(process.env.PORT || 5000);
 
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
+const CLIENT_ORIGIN =
+  process.env.CLIENT_ORIGIN || "https://student-nest-edits.vercel.app";
 
 const CLIENT_BUILD_DIR = path.resolve(process.env.CLIENT_BUILD_DIR || "./dist");
 
